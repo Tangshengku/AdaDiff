@@ -1,62 +1,17 @@
-## U-ViT<br> <sub><small>Official PyTorch implementation of [All are Worth Words: A ViT Backbone for Diffusion Models](https://arxiv.org/abs/2209.12152) (CVPR 2023)</small></sub>
+## AdaDiff<br> <sub><small>Official PyTorch implementation of [AdaDiff: Accelerating Diffusion Models through Step-Wise Adaptive Computation](https://arxiv.org/abs/2309.17074) (ECCV 2024)</small></sub>
 
 
-💡Projects with U-ViT: 
-* [UniDiffuser](https://github.com/thu-ml/unidiffuser), a multi-modal large-scale diffusion model based on a 1B U-ViT, is open-sourced
-* [DPT](https://arxiv.org/abs/2302.10586), [code](https://github.com/ML-GSAI/DPT), [demo](https://ml-gsai.github.io/DPT-demo) a conditional diffusion model trained with 1 label/class with SOTA SSL generation and classification results on ImageNet
+<img src="Arc.png" alt="drawing" width="800"/>
 
-<img src="uvit.png" alt="drawing" width="400"/>
-
-Vision transformers (ViT) have shown promise in various vision tasks while the U-Net based on a convolutional neural network (CNN) remains dominant in diffusion models. 
-We design a simple and general ViT-based architecture (named U-ViT) for image generation with diffusion models. 
-U-ViT is characterized by treating all inputs including the time, condition and noisy image patches as tokens 
-and employing long skip connections between shallow and deep layers. 
-We evaluate U-ViT in unconditional and class-conditional image generation, 
-as well as text-to-image generation tasks, where U-ViT is comparable if not superior to a CNN-based U-Net of a similar size. 
-In particular, latent diffusion models with U-ViT achieve record-breaking FID scores of 2.29 in class-conditional image generation 
-on ImageNet 256x256, and 5.48 in text-to-image generation on MS-COCO, among methods without accessing 
-large external datasets during the training of generative models.
-
-Our results suggest that, for diffusion-based image modeling, the long skip connection is crucial while the down-sampling and up-sampling operators in CNN-based U-Net are not always necessary. We believe that U-ViT can provide insights for future research on backbones in diffusion models and benefit generative modeling on large scale cross-modality datasets.
+Diffusion models achieve great success in generating diverse and high-fidelity images, yet their widespread application, especially in real-time scenarios, is hampered by their inherently slow generation speed. The slow generation stems from the necessity of multi-step network inference. While some certain predictions benefit from the full computation of the model in each sampling iteration, not every iteration requires the same amount of computation, potentially leading to inefficient computation. Unlike typical adaptive computation challenges that deal with single-step generation problems, diffusion processes with a multi-step generation need to dynamically adjust their computational resource allocation based on the ongoing assessment of each step's importance to the final image output, presenting a unique set of challenges. In this work, we propose AdaDiff, an adaptive framework that dynamically allocates computation resources in each sampling step to improve the generation efficiency of diffusion models. To assess the effects of changes in computational effort on image quality, we present a timestep-aware uncertainty estimation module (UEM). Integrated at each intermediate layer, the UEM evaluates the predictive uncertainty. This uncertainty measurement serves as an indicator for determining whether to terminate the inference process. Additionally, we introduce an uncertainty-aware layer-wise loss aimed at bridging the performance gap between full models and their adaptive counterparts.
 
 --------------------
 
 
 
-This codebase implements the transformer-based backbone 📌*U-ViT*📌 for diffusion models, as introduced in the [paper](https://arxiv.org/abs/2209.12152).
-U-ViT treats all inputs as tokens and employs long skip connections. *The long skip connections grealy promote the performance and the convergence speed*.
+This codebase implements the AdaDiff which aims to accelerate the inference of diffusion generation via early exiting. By introducing a simple but effective Uncertainty Estimation Module(UEM) and Uncertainty-Aware Layer-wise Loss, AdaDiff skip backbone layers adaptively through different sampling steps, achieving more than 40% speedup with minimal performance drop on CIFAR-10, CelebA, COCO and ImageNet. In this repo, we provide the training and evalutation scripts to reproduce our results. Also, we provide our pretrained weights for evaluation.
 
-
-
-<img src="skip_im.png" alt="drawing" width="400"/>
-
-
-💡This codebase contains:
-* An implementation of [U-ViT](libs/uvit.py) with optimized attention computation
-* Pretrained U-ViT models on common image generation benchmarks (CIFAR10, CelebA 64x64, ImageNet 64x64, ImageNet 256x256, ImageNet 512x512)
-* Efficient training scripts for [pixel-space diffusion models](train.py), [latent space diffusion models](train_ldm_discrete.py) and [text-to-image diffusion models](train_t2i_discrete.py)
-* Efficient evaluation scripts for [pixel-space diffusion models](eval.py) and [latent space diffusion models](eval_ldm_discrete.py) and [text-to-image diffusion models](eval_t2i_discrete.py)
-* A Colab notebook demo for sampling from U-ViT on ImageNet (FID=2.29) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/baofff/U-ViT/blob/main/UViT_ImageNet_demo.ipynb)
-
-
-<img src="sample.png" alt="drawing" width="800"/>
-
-
-💡This codebase supports useful techniques for efficient training and sampling of diffusion models:
-* Mixed precision training with the [huggingface accelerate](https://github.com/huggingface/accelerate) library (🥰automatically turned on)
-* Efficient attention computation with the [facebook xformers](https://github.com/facebookresearch/xformers) library (needs additional installation)
-* Gradient checkpointing trick, which reduces ~65% memory (🥰automatically turned on)
-* With these techniques, we are able to train our largest U-ViT-H on ImageNet at high resolutions such as 256x256 and 512x512 using a large batch size of 1024 with *only 2 A100*❗
-
-
-Training speed and memory of U-ViT-H/2 on ImageNet 256x256 using a batch size of 128 with a A100:
-
-| mixed precision training | xformers | gradient checkpointing |  training speed   |    memory     |
-|:------------------------:|:--------:|:----------------------:|:-----------------:|:-------------:|
-|            ❌             |    ❌     |           ❌            |         -         | out of memory |
-|            ✔             |    ❌     |           ❌            | 0.97 steps/second |   78852 MB    |
-|            ✔             |    ✔     |           ❌            | 1.14 steps/second |   54324 MB    |
-|            ✔             |    ✔     |           ✔            | 0.87 steps/second |   18858 MB    |
+Since AdaDiff introduce negligible new parameters to U-ViT archiecture, our method requires similar memory-budget as U-ViT.
 
 
 
@@ -75,24 +30,20 @@ pip install -U --pre triton
 * We highly suggest install [xformers](https://github.com/facebookresearch/xformers), which would greatly speed up the attention computation for *both training and inference*.
 
 
+If you want to reproduce our results by finetuning, you need to firstly download the pretrained weight from following links:
 
-## Pretrained Models
+## Pretrained Models for AdaDiff Finetuning(from U-ViT Repo)
 
 
 |                                                         Model                                                          |  FID  | training iterations | batch size |
 |:----------------------------------------------------------------------------------------------------------------------:|:-----:|:-------------------:|:----------:|
 |      [CIFAR10 (U-ViT-S/2)](https://drive.google.com/file/d/1yoYyuzR_hQYWU0mkTj659tMTnoCWCMv-/view?usp=share_link)      | 3.11  |        500K         |    128     |
 |   [CelebA 64x64 (U-ViT-S/4)](https://drive.google.com/file/d/13YpbRtlqF1HDBNLNRlKxLTbKbKeLE06C/view?usp=share_link)    | 2.87  |        500K         |    128     |
-|  [ImageNet 64x64 (U-ViT-M/4)](https://drive.google.com/file/d/1igVgRY7-A0ZV3XqdNcMGOnIGOxKr9azv/view?usp=share_link)   | 5.85  |        300K         |    1024    |
-|  [ImageNet 64x64 (U-ViT-L/4)](https://drive.google.com/file/d/19rmun-T7RwkNC1feEPWinIo-1JynpW7J/view?usp=share_link)   | 4.26  |        300K         |    1024    |
 | [ImageNet 256x256 (U-ViT-L/2)](https://drive.google.com/file/d/1w7T1hiwKODgkYyMH9Nc9JNUThbxFZgs3/view?usp=share_link)  | 3.40  |        300K         |    1024    |
-| [ImageNet 256x256 (U-ViT-H/2)](https://drive.google.com/file/d/13StUdrjaaSXjfqqF7M47BzPyhMAArQ4u/view?usp=share_link)  | 2.29  |        500K         |    1024    |
-| [ImageNet 512x512 (U-ViT-L/4)](https://drive.google.com/file/d/1mkj4aN2utHMBTWQX9l1nYue9vleL7ZSB/view?usp=share_link)  | 4.67  |        500K         |    1024    |
-| [ImageNet 512x512 (U-ViT-H/4)](https://drive.google.com/file/d/1uegr2o7cuKXtf2akWGAN2Vnlrtw5YKQq/view?usp=share_link)  | 4.05  |        500K         |    1024    |
 |      [MS-COCO (U-ViT-S/2)](https://drive.google.com/file/d/15JsZWRz2byYNU6K093et5e5Xqd4uwA8S/view?usp=share_link)      | 5.95  |         1M          |    256     |
-|   [MS-COCO (U-ViT-S/2, Deep)](https://drive.google.com/file/d/1gHRy8sn039Wy-iFL21wH8TiheHK8Ky71/view?usp=share_link)   | 5.48  |         1M          |    256     |
 
-
+## Models after AdaDiff Finetuning
+All of the models to reproduce the results in the paper can be found in [Link](https://mbzuaiac-my.sharepoint.com/:f:/g/personal/shengkun_tang_mbzuai_ac_ae/Evc3r6RLBhNDp5ee7MGCj5cB5ecfyMxATP1KIaiAceRcaw?e=EmDIB6)
 
 ## Preparation Before Training and Evaluation
 
@@ -102,7 +53,6 @@ Put the downloaded directory as `assets/stable-diffusion` in this codebase.
 The autoencoders are used in latent diffusion models.
 
 #### Data
-* ImageNet 64x64: Put the standard ImageNet dataset (which contains the `train` and `val` directory) to `assets/datasets/ImageNet`.
 * ImageNet 256x256 and ImageNet 512x512: Extract ImageNet features according to `scripts/extract_imagenet_feature.py`.
 * MS-COCO: Download COCO 2014 [training](http://images.cocodataset.org/zips/train2014.zip), [validation](http://images.cocodataset.org/zips/val2014.zip) data and [annotations](http://images.cocodataset.org/annotations/annotations_trainval2014.zip). Then extract their features according to `scripts/extract_mscoco_feature.py` `scripts/extract_test_prompt_feature.py` `scripts/extract_empty_feature.py`.
 
@@ -114,11 +64,10 @@ In addition to evaluation, these reference statistics are used to monitor FID du
 ## Training
 
 
-
 We use the [huggingface accelerate](https://github.com/huggingface/accelerate) library to help train with distributed data parallel and mixed precision. The following is the training command:
 ```sh
 # the training setting
-num_processes=2  # the number of gpus you have, e.g., 2
+num_processes=4  # the number of gpus you have, e.g., 2
 train_script=train.py  # the train script, one of <train.py|train_ldm.py|train_ldm_discrete.py|train_t2i_discrete.py>
                        # train.py: training on pixel space
                        # train_ldm.py: training on latent space with continuous timesteps
@@ -126,43 +75,27 @@ train_script=train.py  # the train script, one of <train.py|train_ldm.py|train_l
                        # train_t2i_discrete.py: text-to-image training on latent space
 config=configs/cifar10_uvit_small.py  # the training configuration
                                       # you can change other hyperparameters by modifying the configuration file
-
+pretrained_weight=/home/dongk/dkgroup/tsk/projects/U-ViT/ckpt/cifar10_uvit_small.pth # Please adjust this path to your weight path.
 # launch training
-accelerate launch --multi_gpu --num_processes $num_processes --mixed_precision fp16 $train_script --config=$config
+accelerate launch --multi_gpu --num_processes $num_processes --mixed_precision fp16 
+    $train_script --config=$config --is_train=True --pretrained_weight=${pretrained_weight}
 ```
 
 
-We provide all commands to reproduce U-ViT training in the paper:
+We provide all commands to reproduce AdaDiff training in the paper:
 ```sh
 # CIFAR10 (U-ViT-S/2)
-accelerate launch --multi_gpu --num_processes 4 --mixed_precision fp16 train.py --config=configs/cifar10_uvit_small.py
+sh ./train_cifar.sh
 
 # CelebA 64x64 (U-ViT-S/4)
-accelerate launch --multi_gpu --num_processes 4 --mixed_precision fp16 train.py --config=configs/celeba64_uvit_small.py 
+sh ./train_celeba.sh
 
-# ImageNet 64x64 (U-ViT-M/4)
-accelerate launch --multi_gpu --num_processes 8 --mixed_precision fp16 train.py --config=configs/imagenet64_uvit_mid.py
-
-# ImageNet 64x64 (U-ViT-L/4)
-accelerate launch --multi_gpu --num_processes 8 --mixed_precision fp16 train.py --config=configs/imagenet64_uvit_large.py
 
 # ImageNet 256x256 (U-ViT-L/2)
-accelerate launch --multi_gpu --num_processes 8 --mixed_precision fp16 train_ldm.py --config=configs/imagenet256_uvit_large.py
-
-# ImageNet 256x256 (U-ViT-H/2)
-accelerate launch --multi_gpu --num_processes 8 --mixed_precision fp16 train_ldm_discrete.py --config=configs/imagenet256_uvit_huge.py
-
-# ImageNet 512x512 (U-ViT-L/4)
-accelerate launch --multi_gpu --num_processes 8 --mixed_precision fp16 train_ldm.py --config=configs/imagenet512_uvit_large.py
-
-# ImageNet 512x512 (U-ViT-H/4)
-accelerate launch --multi_gpu --num_processes 8 --mixed_precision fp16 train_ldm_discrete.py --config=configs/imagenet512_uvit_huge.py
+sh ./train_imagenet.sh
 
 # MS-COCO (U-ViT-S/2)
-accelerate launch --multi_gpu --num_processes 4 --mixed_precision fp16 train_t2i_discrete.py --config=configs/mscoco_uvit_small.py
-
-# MS-COCO (U-ViT-S/2, Deep)
-accelerate launch --multi_gpu --num_processes 4 --mixed_precision fp16 train_t2i_discrete.py --config=configs/mscoco_uvit_small.py --config.nnet.depth=16
+sh ./train_coco.sh
 ```
 
 
@@ -172,16 +105,20 @@ accelerate launch --multi_gpu --num_processes 4 --mixed_precision fp16 train_t2i
 We use the [huggingface accelerate](https://github.com/huggingface/accelerate) library for efficient inference with mixed precision and multiple gpus. The following is the evaluation command:
 ```sh
 # the evaluation setting
-num_processes=2  # the number of gpus you have, e.g., 2
-eval_script=eval.py  # the evaluation script, one of <eval.py|eval_ldm.py|eval_ldm_discrete.py|eval_t2i_discrete.py>
+export num_processes=4 # the number of gpus you have, e.g., 2
+export eval_script=eval.py  # the evaluation script, one of <eval.py|eval_ldm.py|eval_ldm_discrete.py|eval_t2i_discrete.py>
                      # eval.py: for models trained with train.py (i.e., pixel space models)
                      # eval_ldm.py: for models trained with train_ldm.py (i.e., latent space models with continuous timesteps)
                      # eval_ldm_discrete.py: for models trained with train_ldm_discrete.py (i.e., latent space models with discrete timesteps)
                      # eval_t2i_discrete.py: for models trained with train_t2i_discrete.py (i.e., text-to-image models on latent space)
-config=configs/cifar10_uvit_small.py  # the training configuration
+export config=configs/cifar10_uvit_small.py # the training configuration
 
+threshold=0.92 #Please adjust this for trade-off
 # launch evaluation
-accelerate launch --multi_gpu --num_processes $num_processes --mixed_precision fp16 eval_script --config=$config
+accelerate launch   --num_processes $num_processes --mixed_precision fp16 $eval_script
+         --config=$config
+         --exit_threshold=${threshold}
+          --nnet_path=/home/dongk/dkgroup/tsk/projects/U-ViT/workdir/cifar10_uvit_small/AdaDiff/75000.ckpt/nnet_ema.pth # Please adjust to your path
 ```
 The generated images are stored in a temperary directory, and will be deleted after evaluation. If you want to keep these images, set `--config.sample.path=/save/dir`.
 
@@ -189,34 +126,17 @@ The generated images are stored in a temperary directory, and will be deleted af
 We provide all commands to reproduce FID results in the paper:
 ```sh
 # CIFAR10 (U-ViT-S/2)
-accelerate launch --multi_gpu --num_processes 4 --mixed_precision fp16 eval.py --config=configs/cifar10_uvit_small.py --nnet_path=cifar10_uvit_small.pth
+sh ./eval_cifar.sh
 
 # CelebA 64x64 (U-ViT-S/4)
-accelerate launch --multi_gpu --num_processes 4 --mixed_precision fp16 eval.py --config=configs/celeba64_uvit_small.py --nnet_path=celeba64_uvit_small.pth
-
-# ImageNet 64x64 (U-ViT-M/4)
-accelerate launch --multi_gpu --num_processes 8 --mixed_precision fp16 eval.py --config=configs/imagenet64_uvit_mid.py --nnet_path=imagenet64_uvit_mid.pth
-
-# ImageNet 64x64 (U-ViT-L/4)
-accelerate launch --multi_gpu --num_processes 8 --mixed_precision fp16 eval.py --config=configs/imagenet64_uvit_large.py --nnet_path=imagenet64_uvit_large.pth
+sh ./eval_celeba.sh
 
 # ImageNet 256x256 (U-ViT-L/2)
-accelerate launch --multi_gpu --num_processes 8 --mixed_precision fp16 eval_ldm.py --config=configs/imagenet256_uvit_large.py --nnet_path=imagenet256_uvit_large.pth
-
-# ImageNet 256x256 (U-ViT-H/2)
-accelerate launch --multi_gpu --num_processes 8 --mixed_precision fp16 eval_ldm_discrete.py --config=configs/imagenet256_uvit_huge.py --nnet_path=imagenet256_uvit_huge.pth
-
-# ImageNet 512x512 (U-ViT-L/4)
-accelerate launch --multi_gpu --num_processes 8 --mixed_precision fp16 eval_ldm.py --config=configs/imagenet512_uvit_large.py --nnet_path=imagenet512_uvit_large.pth
-
-# ImageNet 512x512 (U-ViT-H/4)
-accelerate launch --multi_gpu --num_processes 8 --mixed_precision fp16 eval_ldm_discrete.py --config=configs/imagenet512_uvit_huge.py --nnet_path=imagenet512_uvit_huge.pth
+sh ./eval_imagenet.sh
 
 # MS-COCO (U-ViT-S/2)
-accelerate launch --multi_gpu --num_processes 4 --mixed_precision fp16 eval_t2i_discrete.py --config=configs/mscoco_uvit_small.py --nnet_path=mscoco_uvit_small.pth
+sh ./eval_coco.sh
 
-# MS-COCO (U-ViT-S/2, Deep)
-accelerate launch --multi_gpu --num_processes 4 --mixed_precision fp16 eval_t2i_discrete.py --config=configs/mscoco_uvit_small.py --config.nnet.depth=16 --nnet_path=mscoco_uvit_small_deep.pth
 ```
 
 
@@ -225,16 +145,13 @@ accelerate launch --multi_gpu --num_processes 4 --mixed_precision fp16 eval_t2i_
 ## References
 If you find the code useful for your research, please consider citing
 ```bib
-@inproceedings{bao2022all,
-  title={All are Worth Words: A ViT Backbone for Diffusion Models},
-  author={Bao, Fan and Nie, Shen and Xue, Kaiwen and Cao, Yue and Li, Chongxuan and Su, Hang and Zhu, Jun},
-  booktitle = {CVPR},
+@article{tang2023deediff,
+  title={Deediff: Dynamic uncertainty-aware early exiting for accelerating diffusion model generation},
+  author={Tang, Shengkun and Wang, Yaqing and Ding, Caiwen and Liang, Yi and Li, Yao and Xu, Dongkuan},
+  journal={arXiv preprint arXiv:2309.17074},
   year={2023}
 }
 ```
 
 This implementation is based on
-* [Extended Analytic-DPM](https://github.com/baofff/Extended-Analytic-DPM) (provide the FID reference statistics on CIFAR10 and CelebA 64x64)
-* [guided-diffusion](https://github.com/openai/guided-diffusion) (provide the FID reference statistics on ImageNet)
-* [pytorch-fid](https://github.com/mseitzer/pytorch-fid) (provide the official implementation of FID to PyTorch)
-* [dpm-solver](https://github.com/LuChengTHU/dpm-solver) (provide the sampler)
+* [U-ViT](https://github.com/baofff/U-ViT) (Main Architecture)
